@@ -2,7 +2,7 @@ import gi
 import sys
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, Pango, Gdk
+from gi.repository import Gtk, Gio, Pango
 
 class NotesApp(Gtk.Window):
     def __init__(self):
@@ -58,28 +58,40 @@ class NotesApp(Gtk.Window):
 
         # Formatting buttons
         buttons = [
-            (Gtk.STOCK_BOLD, self.set_bold),
-            (Gtk.STOCK_ITALIC, self.set_italic),
-            (Gtk.STOCK_UNDERLINE, self.set_underline),
-            (Gtk.STOCK_SELECT_COLOR, self.set_highlight),
-            (Gtk.STOCK_JUSTIFY_LEFT, self.justify_left),
-            (Gtk.STOCK_JUSTIFY_RIGHT, self.justify_right),
-            (Gtk.STOCK_ADD, self.add_bullet)
+            ("Bold", self.set_bold),
+            ("Italic", self.set_italic),
+            ("Underline", self.set_underline),
+            ("Highlight", self.set_highlight),
+            ("Left", self.justify_left),
+            ("Right", self.justify_right),
+            ("Bullet", self.add_bullet)
         ]
 
-        for stock, handler in buttons:
-            button = Gtk.ToolButton.new_from_stock(stock)
+        for label, handler in buttons:
+            button = Gtk.ToolButton(label=label)
             button.connect("clicked", handler, text_view)
             toolbar.insert(button, -1)
 
-        # Page style buttons
-        ruled_page_button = Gtk.ToolButton(label="Ruled")
-        ruled_page_button.connect("clicked", self.set_ruled, text_view)
-        toolbar.insert(ruled_page_button, -1)
+        # Font size dropdown
+        font_size_combo = Gtk.ComboBoxText()
+        for size in range(8, 33, 2):
+            font_size_combo.append_text(str(size))
+        font_size_combo.set_active(2)  # Default size
+        font_size_combo.connect("changed", self.set_font_size, text_view)
+        font_size_toolitem = Gtk.ToolItem()
+        font_size_toolitem.add(font_size_combo)
+        toolbar.insert(font_size_toolitem, -1)
 
-        grid_page_button = Gtk.ToolButton(label="Grid")
-        grid_page_button.connect("clicked", self.set_grid, text_view)
-        toolbar.insert(grid_page_button, -1)
+        # Font selection dropdown
+        font_combo = Gtk.ComboBoxText()
+        fonts = ["Sans", "Serif", "Monospace", "Arial", "Courier", "Verdana", "Tahoma"]
+        for font in fonts:
+            font_combo.append_text(font)
+        font_combo.set_active(0)  # Default font
+        font_combo.connect("changed", self.set_font, text_view)
+        font_toolitem = Gtk.ToolItem()
+        font_toolitem.add(font_combo)
+        toolbar.insert(font_toolitem, -1)
 
         # Vertical box for toolbar and text area
         note_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -89,6 +101,16 @@ class NotesApp(Gtk.Window):
         # Add the page to the notebook
         self.notebook.append_page(note_vbox, Gtk.Label(label=f"Note {self.notebook.get_n_pages() + 1}"))
         self.notebook.show_all()
+
+    def set_font_size(self, combo, text_view):
+        size = combo.get_active_text()
+        if size:
+            self.apply_tag(text_view, f"font-size-{size}", size_points=int(size))
+
+    def set_font(self, combo, text_view):
+        font = combo.get_active_text()
+        if font:
+            self.apply_tag(text_view, f"font-{font}", family=font)
 
     def search_text(self, widget):
         search_query = widget.get_text().lower()
@@ -140,12 +162,6 @@ class NotesApp(Gtk.Window):
     def add_bullet(self, widget, text_view):
         buffer = text_view.get_buffer()
         buffer.insert_at_cursor("• ")
-
-    def set_ruled(self, widget, text_view):
-        text_view.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0.9, 0.9, 0.9, 1))
-
-    def set_grid(self, widget, text_view):
-        text_view.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0.8, 0.8, 0.8, 1))
 
     def apply_tag(self, text_view, tag_name, **properties):
         buffer = text_view.get_buffer()
